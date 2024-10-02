@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Dashboard</h2>
+<p>Your API Token: <span id="token"></span></p>
+
+<h3>Scrape a URL</h3>
+<form id="scrape-form">
+    <div class="mb-3">
+        <input type="url" class="form-control" id="url-input" required placeholder="Enter URL to scrape">
+    </div>
+    <button type="submit" class="btn btn-primary">Scrape</button>
+</form>
+
+<div id="result" class="mt-4"></div>
+
+<h3 class="mt-4">Scraping History</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>URL</th>
+            <th>Scraped At</th>
+            <th>Email Count</th>
+        </tr>
+    </thead>
+    <tbody id="history-body">
+    </tbody>
+</table>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '{% url "App:login" %}';
+    }
+    document.getElementById('token').textContent = token;
+
+    // Fetch and display scraping history
+    fetch('{% url "App:history-list" %}', {
+        headers: {
+            'Authorization': `Token ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const historyBody = document.getElementById('history-body');
+        data.forEach(item => {
+            historyBody.innerHTML += `
+                <tr>
+                    <td>${item.url}</td>
+                    <td>${item.scraped_at}</td>
+                    <td>${item.email_count}</td>
+                </tr>
+            `;
+        });
+    });
+
+    // Handle form submission
+    document.getElementById('scrape-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const url = document.getElementById('url-input').value;
+        fetch('{% url "App:scrape" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Token ${token}`
+            },
+            body: JSON.stringify({ url: url })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('result').innerHTML = `
+                <h4>Results:</h4>
+                <p>Emails found: ${data.count}</p>
+                <ul>
+                    ${data.emails.map(email => `<li>${email}</li>`).join('')}
+                </ul>
+            `;
+        });
+    });
+});
+</script>
+{% endblock %}
